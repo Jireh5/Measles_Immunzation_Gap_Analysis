@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measles Immunization Gap Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="brand">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Measles Immunization Gap Analysis</h1>
+                    <p>MCV1 Coverage Monitoring Dashboard • WHO/UNICEF Data 2022 - 2024</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="global-controls">
+            <div class="alert-indicator">
+                <span class="alert-pulse"></span>
+                <span class="alert-text">Live Monitoring</span>
+            </div>
+            <span class="global-label">View Period:</span>
+            <select id="year-filter">
+                <option value="All">All Years (Latest)</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="metrics-container" id="metrics-container">
+    </div>
+
+    <div class="alert-banner">
+        <div class="alert-content">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="alert-message">
+                <strong>Critical Alert:</strong> Countries below 95% coverage threshold require immediate intervention to prevent outbreaks
+            </div>
+        </div>
+    </div>
+
+    <div class="visualization-container">
+        
+        <div class="chart-box main-col">
+            <div class="chart-header">
+                <div>
+                    <h2>
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Global Coverage Map
+                    </h2>
+                    <span id="map-year-label" class="meta">(Latest Available)</span>
+                </div>
+                <button id="reset-zoom" class="btn-small">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                    </svg>
+                    Reset Zoom
+                </button>
+            </div>
+            
+            <div id="choropleth-map">
+                <div id="map-info">
+                    <h3 id="info-country">Hover Country</h3>
+                    <div id="info-rate" class="rate-large">--%</div>
+                    <div id="info-year" style="font-size:0.8rem; color:#64748b;">Year: --</div>
+                </div>
+
+                <div id="map-legend" class="map-overlay-legend">
+                    <div class="legend-item"><span class="dot l-green"></span> ≥ 95% (Target)</div>
+                    <div class="legend-item"><span class="dot l-yellow-green"></span> 90% - 94%</div>
+                    <div class="legend-item"><span class="dot l-yellow"></span> 80% - 89%</div>
+                    <div class="legend-item"><span class="dot l-yellow-orange"></span> 70% - 79%</div>
+                    <div class="legend-item"><span class="dot l-orange"></span> 60% - 69%</div>
+                    <div class="legend-item"><span class="dot l-red-orange"></span> 50% - 59%</div>
+                    <div class="legend-item"><span class="dot l-red"></span> &lt; 50%</div>
+                    <div class="legend-item"><span class="dot l-gray"></span> No Data</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-box side-col priority-card">
+            <div class="chart-header">
+                <h2>
+                    <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10.29 3.86L1.82 18C1.64537 18.3024 1.55296 18.6453 1.55199 18.9945C1.55101 19.3437 1.64151 19.6871 1.81445 19.9905C1.98738 20.2939 2.23675 20.5467 2.53773 20.7239C2.83871 20.901 3.18082 20.9962 3.53 21H20.47C20.8192 20.9962 21.1613 20.901 21.4623 20.7239C21.7633 20.5467 22.0126 20.2939 22.1856 19.9905C22.3585 19.6871 22.449 19.3437 22.448 18.9945C22.447 18.6453 22.3546 18.3024 22.18 18L13.71 3.86C13.5317 3.56611 13.2807 3.32312 12.9812 3.15448C12.6817 2.98585 12.3437 2.89725 12 2.89725C11.6563 2.89725 11.3183 2.98585 11.0188 3.15448C10.7193 3.32312 10.4683 3.56611 10.29 3.86Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 9V13M12 17H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Priority Interventions
+                </h2>
+                <span class="badge-critical">Top 10 Gaps</span>
+            </div>
+            <div id="bar-chart"></div>
+            <p class="caption">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align: middle; margin-right: 4px;">
+                    <circle cx="6" cy="6" r="5" stroke="#ef4444" stroke-width="2" fill="none"/>
+                    <path d="M6 3v3.5M6 8.5h.01" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                Countries requiring immediate intervention
+            </p>
+        </div>
+
+        <div class="chart-box full-width">
+            <div class="chart-header">
+                <h2>
+                    <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 3V21M21 21H3M7 16L12 11L16 15L21 10M21 10H17M21 10V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Immunization Gap Analysis & Comparison
+                </h2>
+                <span class="meta">Multi-country historical performance tracking</span>
+            </div>
+            
+            <div class="comparison-ui">
+                <div class="comparison-controls">
+                    <select id="country-select-dropdown">
+                        <option value="" disabled selected>Search/Select Country...</option>
+                    </select>
+                    <button id="add-country-btn" class="btn-primary">+ Add Country</button>
+                    <button id="clear-comparison-btn" class="btn-secondary">Clear</button>
+                </div>
+                
+                <div id="selected-countries-list" class="tags-container"></div>
+                
+                <div class="comparison-layout">
+                    <div id="comparison-chart" class="comp-chart">
+                        Select countries above to visualize trends.
+                    </div>
+                    <div id="comparison-table-container" class="comp-table"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-box full-width">
+            <div class="chart-header">
+                <h2>
+                    <svg class="section-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 6V18M15 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Detailed Data Explorer
+                </h2>
+                <span class="meta">Complete dataset with advanced filtering</span>
+            </div>
+            
+            <div class="controls-row">
+                <input type="text" id="search-input" placeholder="Search by Country Name...">
+                <select id="table-year-filter">
+                    <option value="All">Filter by Year: All</option>
+                </select>
+                <select id="region-filter">
+                    <option value="All">Filter by Region: All</option>
+                </select>
+            </div>
+
+            <div id="summary-table"></div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
