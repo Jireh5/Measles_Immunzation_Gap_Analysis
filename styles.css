@@ -41,6 +41,91 @@
     --glow: 0 0 20px rgba(8, 145, 178, 0.3);
 }
 
+/* --- LOADING SCREEN --- */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(248, 250, 252, 0.95);
+    backdrop-filter: blur(8px); /* Blur effect */
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease-in-out, visibility 0.8s;
+}
+
+.loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Double Ring Pulsing Spinner */
+.spinner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    position: relative;
+    animation: rotate 2s linear infinite;
+}
+
+.spinner::before, .spinner::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 4px solid transparent;
+}
+
+.spinner::before {
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-top-color: var(--primary);
+    border-bottom-color: var(--primary);
+    animation: pulse-ring 2s linear infinite;
+}
+
+.spinner::after {
+    top: 8px; left: 8px; right: 8px; bottom: 8px;
+    border-left-color: var(--accent);
+    border-right-color: var(--accent);
+    animation: pulse-ring 1.5s linear infinite reverse;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
+
+.loading-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    letter-spacing: 0.05em;
+    animation: fadeText 2s infinite;
+}
+
+@keyframes fadeText {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* Class to hide loader */
+body.loaded #loading-overlay {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 /* --- Base Styles --- */
 * { 
     box-sizing: border-box; 

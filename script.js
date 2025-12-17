@@ -433,13 +433,21 @@ async function init() {
         d3.select("#table-year-filter").on("change", filterData);
         d3.select("#download-csv-btn").on("click", downloadCSV);
 
+        // Hide loading overlay after a delay
+        setTimeout(() => {
+            document.body.classList.add('loaded');
+        }, 2000);
+
         window.addEventListener('resize', () => { 
             renderMap(geoJson, dataMap); 
             renderBarChart(snapshot); 
             renderPieChart(snapshot);
             updateComparisonView();
         });
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e);
+        d3.select("#loading-overlay").html(`<div style="text-align:center; color:#ef4444;"><h3>Error Loading Data</h3><p>${e}</p></div>`);
+    }
 }
 
 init();
