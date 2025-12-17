@@ -78,7 +78,7 @@ function renderMap(geoData, dataMap) {
     const container = d3.select("#choropleth-map");
     container.select("svg").remove(); 
     const width = container.node().clientWidth;
-    const height = 500;
+    const height = 450;
     const svg = container.append("svg").attr("viewBox", `0 0 ${width} ${height}`).style("position", "absolute").style("top", "0").style("left", "0");
     const g = svg.append("g");
     const projection = d3.geoMercator().scale(130).translate([width / 2, height / 1.5]);
@@ -127,6 +127,89 @@ function renderBarChart(data) {
     rows.append("rect").attr("x", BAR_START_X).attr("y", 12).attr("height", ROW_HEIGHT - 24).attr("width", MAX_BAR_WIDTH).attr("fill", "#f1f5f9").attr("rx", 4);
     rows.append("rect").attr("x", BAR_START_X).attr("y", 12).attr("height", ROW_HEIGHT - 24).attr("width", 0).attr("fill", d => getRateColor(d["Vaccination Rate (%)"])).attr("rx", 4).transition().duration(1000).attr("width", d => x(d["Vaccination Rate (%)"]));
     rows.append("text").attr("x", BAR_START_X + 10).attr("y", ROW_HEIGHT / 2).attr("dy", "0.35em").text(d => d["Vaccination Rate (%)"].toFixed(1) + "%").style("font-size", "12px").style("font-weight", "bold").style("fill", "#333").transition().duration(1000).attr("x", d => BAR_START_X + x(d["Vaccination Rate (%)"]) + 8);
+}
+
+function renderPieChart(data) {
+    const categories = [
+        { label: "≥ 95% (Target)", min: 95, max: 100, color: RATE_COLORS.GREEN },
+        { label: "90% - 94%", min: 90, max: 94.99, color: RATE_COLORS.YELLOW_GREEN },
+        { label: "80% - 89%", min: 80, max: 89.99, color: RATE_COLORS.YELLOW },
+        { label: "70% - 79%", min: 70, max: 79.99, color: RATE_COLORS.YELLOW_ORANGE },
+        { label: "60% - 69%", min: 60, max: 69.99, color: RATE_COLORS.ORANGE },
+        { label: "50% - 59%", min: 50, max: 59.99, color: RATE_COLORS.RED_ORANGE },
+        { label: "< 50%", min: 0, max: 49.99, color: RATE_COLORS.RED }
+    ];
+
+    const categoryCounts = categories.map(cat => ({
+        ...cat,
+        count: data.filter(d => d["Vaccination Rate (%)"] >= cat.min && d["Vaccination Rate (%)"] <= cat.max).length
+    })).filter(cat => cat.count > 0);
+
+    const container = d3.select("#pie-chart");
+    container.html("");
+    
+    const width = container.node().clientWidth;
+    const height = 280;
+    const radius = Math.min(width, height) / 2 - 40;
+
+    const svg = container.append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    const pie = d3.pie().value(d => d.count).sort(null);
+    const arc = d3.arc().innerRadius(radius * 0.6).outerRadius(radius);
+    const arcHover = d3.arc().innerRadius(radius * 0.6).outerRadius(radius * 1.05);
+
+    const arcs = svg.selectAll("arc")
+        .data(pie(categoryCounts))
+        .join("g")
+        .attr("class", "arc");
+
+    arcs.append("path")
+        .attr("d", arc)
+        .attr("fill", d => d.data.color)
+        .attr("stroke", "white")
+        .attr("stroke-width", 2)
+        .style("cursor", "pointer")
+        .style("transition", "all 0.3s ease")
+        .on("mouseover", function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr("d", arcHover);
+        })
+        .on("mouseout", function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr("d", arc);
+        });
+
+    arcs.append("text")
+        .attr("transform", d => `translate(${arc.centroid(d)})`)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "700")
+        .style("fill", "white")
+        .style("text-shadow", "0 1px 2px rgba(0,0,0,0.5)")
+        .style("pointer-events", "none")
+        .text(d => d.data.count);
+
+    // Render legend
+    const legend = d3.select("#pie-legend");
+    legend.html("");
+    
+    categoryCounts.forEach(cat => {
+        const item = legend.append("div").attr("class", "pie-legend-item");
+        item.append("div")
+            .attr("class", "pie-legend-color")
+            .style("background-color", cat.color);
+        const label = item.append("div").attr("class", "pie-legend-label");
+        label.append("span").text(cat.label);
+        label.append("span").attr("class", "pie-legend-count").text(cat.count);
+    });
 }
 
 // --- Comparison Tool ---
@@ -241,12 +324,12 @@ function filterData() {
     // Visual Filter
     let visualFiltered = globalData.filter(d => globalYear === "All" || d.Year == globalYear);
     const snapshot = (globalYear === "All") ? getLatestSnapshot(visualFiltered) : visualFiltered;
-    // Calculate metrics including the new total count based on filtered visual data
     const metrics = calculateMetrics(visualFiltered);
     
     const dataMap = new Map(snapshot.map(d => [d.ISO3, d]));
     renderMap(window.geoJsonData, dataMap);
     renderBarChart(snapshot);
+    renderPieChart(snapshot);
     renderMetrics(metrics);
     d3.select("#map-year-label").text(globalYear === "All" ? "(Latest Available)" : `(${globalYear})`);
 }
@@ -275,6 +358,56 @@ function renderTable(data) {
     container.html(html);
 }
 
+// --- CSV Download Function ---
+function downloadCSV() {
+    const searchTerm = d3.select("#search-input").property("value").toLowerCase();
+    const selectedRegion = d3.select("#region-filter").property("value");
+    const tableYear = d3.select("#table-year-filter").property("value");
+
+    // Apply same filters as table
+    let filteredData = globalData.filter(d => {
+        const matchesSearch = d["Country Name"].toLowerCase().includes(searchTerm);
+        const matchesRegion = selectedRegion === "All" || d.Region === selectedRegion;
+        const matchesTableYear = tableYear === "All" || d.Year == tableYear;
+        return matchesSearch && matchesRegion && matchesTableYear;
+    });
+
+    // Sort data
+    filteredData.sort((a, b) => {
+        let valA = a[currentSort.key], valB = b[currentSort.key];
+        if (typeof valA === 'string') { valA = valA.toLowerCase(); valB = valB.toLowerCase(); }
+        return currentSort.order === 'asc' ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
+    });
+
+    // Create CSV content
+    const headers = ["Country Name", "Region", "Vaccination Rate (%)", "Year"];
+    let csvContent = headers.join(",") + "\n";
+    
+    filteredData.forEach(d => {
+        const row = [
+            `"${d["Country Name"]}"`,
+            `"${d["Region"]}"`,
+            d["Vaccination Rate (%)"].toFixed(1),
+            d["Year"]
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `measles_immunization_data_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// --- Initialization ---
 async function init() {
     try {
         const [rawData, geoJson] = await Promise.all([d3.csv(CSV_FILE), d3.json(GEOJSON_FILE)]);
@@ -282,27 +415,31 @@ async function init() {
         globalData = processData(rawData);
         
         const snapshot = getLatestSnapshot(globalData);
-        // Initial metrics calculation using all valid data
         const metrics = calculateMetrics(globalData);
         const dataMap = new Map(snapshot.map(d => [d.ISO3, d]));
 
         renderMetrics(metrics);
         renderMap(geoJson, dataMap);
         renderBarChart(snapshot);
+        renderPieChart(snapshot);
         initComparisonTools(globalData);
         populateFilters(globalData);
         renderTable(globalData);
 
+        // Event listeners
         d3.select("#search-input").on("input", filterData);
         d3.select("#region-filter").on("change", filterData);
         d3.select("#year-filter").on("change", filterData);
         d3.select("#table-year-filter").on("change", filterData);
+        d3.select("#download-csv-btn").on("click", downloadCSV);
 
         window.addEventListener('resize', () => { 
             renderMap(geoJson, dataMap); 
             renderBarChart(snapshot); 
+            renderPieChart(snapshot);
             updateComparisonView();
         });
     } catch (e) { console.error(e); }
 }
+
 init();
